@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html class=''>
+
+<head>
+    <meta charset='UTF-8'>
+    <!-- <link rel='stylesheet' href='normalize.css'> -->
+    <!-- <script src='prefixfree.min.js'></script> -->
+    <!-- <script src='modernizr.js'></script> -->
+    <style class="cp-pen-styles">
+    html,
+    body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    body {
+        background: #111;
+    }
+
+    .dial {
+        position: relative;
+        width: 350px;
+        height: 350px;
+        display: block;
+        margin: 35px auto 15px;
+        cursor: pointer;
+    }
+
+    .dial .wrapper {
+        position: absolute;
+        width: 300px;
+        height: 300px;
+        left: 50%;
+        top: 50%;
+        margin-left: -150px;
+        margin-top: -150px;
+        border-radius: 300px;
+        cursor: pointer;
+        background: linear-gradient(-45deg, #171717 0%, #272727 100%);
+        box-shadow: inset 0px 1px 1px 0px #999, 0px 0px 0px 4px black;
+    }
+
+    .dial .knob {
+        position: absolute;
+        width: 300px;
+        height: 300px;
+        left: 50%;
+        top: 50%;
+        margin-left: -150px;
+        margin-top: -150px;
+        border-radius: 300px;
+        cursor: pointer;
+        -webkit-user-select: none;
+    }
+
+    .dial .center {
+        position: absolute;
+        background: #c5c8b3;
+        width: 100px;
+        height: 100px;
+        left: 50%;
+        top: 50%;
+        border: 6px solid #1b1c1a;
+        margin-left: -56px;
+        margin-top: -56px;
+        border-radius: 300px;
+        color: white;
+        z-index: 1;
+        -webkit-user-select: none;
+        box-shadow: 0px 0px 2px 2px rgba(255, 255, 255, 0.08), inset 0px 0px 10px 4px #6a6c60;
+    }
+
+    .dial .center span {
+        position: relative;
+        display: block;
+        top: 40px;
+        width: 100px;
+        text-align: center;
+        font-size: 24px;
+        color: #454541;
+        font-weight: bold;
+        text-shadow: 0px 1px 0px #eee;
+    }
+
+    .dial .indicator {
+        position: absolute;
+        background: #eeeadc;
+        width: 10px;
+        height: 10px;
+        top: 12px;
+        left: 50%;
+        margin-left: -6px;
+        border-radius: 10px;
+        box-shadow: 0px 0px 4px 1px white;
+    }
+
+    .dial .progress {
+        position: absolute;
+        width: 350px;
+        height: 350px;
+    }
+    </style>
+</head>
+
+<body>
+    <figure class="dial">
+        <div class="center"><span>0</span></div>
+        <div class="wrapper">
+            <div class="knob">
+                <div class="indicator"></div>
+            </div>
+        </div>
+        <canvas class="progress"></canvas>
+    </figure>
+    <script src='http://apps.bdimg.com/libs/jquery/2.1.4/jquery.js'></script>
+    <script>
+    (function() {
+        //旋钮插件
+        var Dial, dial,
+            __bind = function(fn, me) { return function() { return fn.apply(me, arguments); }; };
+
+        Dial = (function() {
+            Dial.prototype.raf = null;
+
+            Dial.prototype.mdown = false;
+
+            Dial.prototype.mwheel = 0
+
+            Dial.prototype.mPos = {
+                x: 0,
+                y: 0
+            };
+
+            Dial.prototype.elementPosition = {
+                x: 0,
+                y: 0
+            };
+
+            Dial.prototype.target = 0;
+
+            Dial.prototype.steps = 100; /*极值,范围*/
+
+            Dial.prototype.radius = 150; /*拖动区域*/
+
+            Dial.prototype.maxDiff = 150;
+
+            Dial.prototype.constraint = 360;
+
+            Dial.prototype.currentVal = 0;
+
+            function Dial($context) {
+                var knobOffset;
+                this.$context = $context;
+                this.onMouseMove = __bind(this.onMouseMove, this);
+                this.onMouseUp = __bind(this.onMouseUp, this);
+                this.onMouseDown = __bind(this.onMouseDown, this);
+                this.onMouseWheel = __bind(this.onMouseWheel, this);
+                this.$knob = this.$context.find(".knob");
+                this.$progress = this.$context.find(".progress");
+                this.$center = this.$context.find(".center");
+                this.$textOutput = this.$center.find("span");
+                this.ctx = this.$progress.get(0).getContext("2d");
+                knobOffset = this.$knob.offset();
+                this.elementPosition = {
+                    x: knobOffset.left,
+                    y: knobOffset.top
+                };
+                this.centerX = this.$progress.width() / 2;
+                this.centerY = this.$progress.height() / 2;
+                this.canvasSize = this.$progress.width();
+                this.addEventListeners();
+                return;
+            }
+
+            Dial.prototype.addEventListeners = function() {
+                this.$context.on("mousedown", this.onMouseDown);
+                this.$context.on("mousemove", this.onMouseMove);
+                this.$context.get(0).addEventListener("mousewheel", this.onMouseWheel);
+                this.$context.get(0).addEventListener("DOMMouseScroll", this.onMouseWheel);
+                $("body").on("mouseup", this.onMouseUp);
+            };
+
+            Dial.prototype.setDialPosition = function() {
+                this.$knob.css({
+                    transform: "rotate(" + this.target + "deg)"
+                });
+            };
+
+            Dial.prototype.setMousePosition = function(event) {
+                var atan, diff, target;
+                this.mPos = {
+                    x: event.pageX - this.elementPosition.x,
+                    y: event.pageY - this.elementPosition.y
+                };
+                atan = Math.atan2(this.mPos.x - this.radius, this.mPos.y - this.radius);
+                target = -atan / (Math.PI / 180) + 180;
+                // console.log(target);
+                diff = Math.abs(target - this.target);
+                if (diff < this.maxDiff && target < this.constraint) {
+                    this.target = target;
+                    this.currentVal = this.map(this.target, 0, 360, 0, this.steps);
+                    this.setDialPosition();
+                    this.updateOutput();
+                }
+            };
+
+            Dial.prototype.setWheelPosition = function(value) {
+
+                var target;
+                target = this.target + value;
+                if (target >= 0 && target <= this.constraint) {
+                    this.target = target //当前角度
+                    this.value = target/this.constraint*this.steps;//当前值 = 当前角度/360*值域
+                    console.log("target:%s,constraint:%s,steps:%s",target,this.constraint,this.steps)
+                    this.$textOutput.text(Math.round(this.value)); 
+                    this.setDialPosition();
+                }
+            }
+
+            Dial.prototype.updateOutput = function() {
+
+                this.$textOutput.text(Math.round(this.currentVal));
+            };
+
+            Dial.prototype.onMouseDown = function(event) {
+                this.mdown = true;
+            };
+
+            Dial.prototype.onMouseUp = function(event) {
+                this.mdown = false;
+            };
+
+            Dial.prototype.onMouseMove = function(event) {
+                if (this.mdown) {
+                    this.setMousePosition(event);
+                }
+            };
+
+            Dial.prototype.onMouseWheel = function(event) {
+                event = event || window.event;
+                if (event.wheelDelta > 0 || event.detail < 0) {
+                    //向上滚
+                    this.mwheel = -1;
+                }
+                if (event.wheelDelta < 0 || event.detail > 0) {
+                    //向下滚
+                    this.mwheel = 1;
+                }
+                this.setWheelPosition(this.mwheel);
+            };
+
+            Dial.prototype.map = function(value, low1, high1, low2, high2) {
+                return low2 + (high2 - low2) * (value - low1) / (high1 - low1);
+                // 100*this.target/360    = currentVal
+            };
+
+            Dial.prototype.get
+            return Dial;
+
+        })();
+
+        this.$dial = $(".dial");
+
+        dial = new Dial(this.$dial);
+
+    }).call(this);
+    </script>
+</body>
+
+</html>
