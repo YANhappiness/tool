@@ -7,3 +7,9 @@ some tool of web include javascript and jquery
 
 	参考地址：http://www.htmleaf.com/jQuery/Buttons-Icons/20141121550.html
 
+* konb2.html 
+	封装，可增加多个旋钮同时调用
+	缺点：只能旋转一周
+
+	
+

@@ -16,6 +16,7 @@
 
     body {
         background: #111;
+        user-select: none; 
     }
 
     .dial {
@@ -53,8 +54,7 @@
         cursor: pointer;
         -webkit-user-select: none;
     }
-
-    .dial .center {
+    /*     .dial .center {
         position: absolute;
         background: #c5c8b3;
         width: 100px;
@@ -70,6 +70,7 @@
         -webkit-user-select: none;
         box-shadow: 0px 0px 2px 2px rgba(255, 255, 255, 0.08), inset 0px 0px 10px 4px #6a6c60;
     }
+ */
 
     .dial .center span {
         position: relative;
@@ -132,6 +133,11 @@
                 y: 0
             };
 
+            Dial.prototype.dPos = {
+                x: 0,
+                y: 0
+            };
+
             Dial.prototype.elementPosition = {
                 x: 0,
                 y: 0
@@ -188,21 +194,39 @@
             };
 
             Dial.prototype.setMousePosition = function(event) {
-                var atan, diff, target;
-                this.mPos = {
+                var atan, diff, target, tan1, tan2, nowMPos;
+                nowMPos = {
                     x: event.pageX - this.elementPosition.x,
                     y: event.pageY - this.elementPosition.y
                 };
-                atan = Math.atan2(this.mPos.x - this.radius, this.mPos.y - this.radius);
-                target = -atan / (Math.PI / 180) + 180;
-                // console.log(target);
-                diff = Math.abs(target - this.target);
-                if (diff < this.maxDiff && target < this.constraint) {
-                    this.target = target;
-                    this.currentVal = this.map(this.target, 0, 360, 0, this.steps);
-                    this.setDialPosition();
-                    this.updateOutput();
+                oldatan = Math.atan2(this.mPos.x - this.radius, this.mPos.y - this.radius);
+                newatan = Math.atan2(nowMPos.x - this.radius, nowMPos.y - this.radius);
+                var atan1;
+                if (Math.abs(newatan - oldatan) > Math.PI) {
+                    if (newatan - oldatan > 0) {
+                        atan1 = (newatan - oldatan) - 2 * Math.PI;
+                    } else {
+                        atan1 = -2 * Math.PI - (newatan - oldatan);
+                    }
+                }//临界值
+
+                else {
+                    atan1 = newatan - oldatan;
                 }
+                this.currentVal = this.currentVal - atan1 / Math.PI * this.steps;
+                // console.log("----",newatan, oldatan, this.currentVal);
+
+                // atan = Math.atan2(nowMPos.x - this.radius, nowMPos.y - this.radius);
+                console.log(nowMPos)
+                this.mPos = nowMPos;
+
+                target = -newatan / (Math.PI / 180) + 180;
+                console.log(target,-newatan);
+                diff = Math.abs(target - this.target);
+                // this.currentVal = target / this.constraint * this.steps;
+                this.target = target;
+                this.setDialPosition();
+                this.updateOutput();
             };
 
             Dial.prototype.setWheelPosition = function(value) {
@@ -211,9 +235,9 @@
                 target = this.target + value;
                 if (target >= 0 && target <= this.constraint) {
                     this.target = target //当前角度
-                    this.value = target/this.constraint*this.steps;//当前值 = 当前角度/360*值域
-                    console.log("target:%s,constraint:%s,steps:%s",target,this.constraint,this.steps)
-                    this.$textOutput.text(Math.round(this.value)); 
+                    this.value = target / this.constraint * this.steps; //当前值 = 当前角度/360*值域
+                    console.log("target:%s,constraint:%s,steps:%s", target, this.constraint, this.steps)
+                    this.$textOutput.text(Math.round(this.value));
                     this.setDialPosition();
                 }
             }
@@ -225,6 +249,10 @@
 
             Dial.prototype.onMouseDown = function(event) {
                 this.mdown = true;
+                this.mPos = {
+                    x: event.pageX - this.elementPosition.x,
+                    y: event.pageY - this.elementPosition.y
+                };
             };
 
             Dial.prototype.onMouseUp = function(event) {

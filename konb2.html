@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>旋钮插件版本二</title>
+    <style type="text/css">
+    body {
+        position: absolute;
+    }
+
+    .dial {
+        position: absolute;
+        width: 160px;
+        height: 160px;
+        display: block;
+        cursor: pointer;
+    }
+
+    #level {
+        top: 180px;
+        left: 520px;
+    }
+
+    #level1 {
+        top: 180px;
+        left: 100px;
+    }
+
+    .dial .wrapper {
+        position: absolute;
+        width: 140px;
+        height: 140px;
+        left: 50%;
+        top: 50%;
+        margin-left: -70px;
+        margin-top: -70px;
+        border-radius: 100%;
+        cursor: pointer;
+        background: linear-gradient(-45deg, #171717 0%, #272727 100%);
+        box-shadow: inset 0px 1px 1px 0px #999, 0px 0px 0px 4px black;
+    }
+
+    .dial .knob {
+        position: absolute;
+        width: 140px;
+        height: 140px;
+        border-radius: 100%;
+        cursor: pointer;
+        -webkit-user-select: none;
+    }
+
+    .dial .indicator {
+        position: absolute;
+        background: #eeeadc;
+        width: 10px;
+        height: 10px;
+        top: 12px;
+        left: 50%;
+        margin-left: -5px;
+        border-radius: 10px;
+        box-shadow: 0px 0px 4px 1px white;
+    }
+    </style>
+</head>
+
+<body>
+	<!-- 只能转一圈 -->
+    <!-- 旋钮 -->
+    <p id="val">0</p>
+    <p id="ranVal">0</p>
+    <figure class="dial" id="level1">
+        <div class="wrapper">
+            <div class="knob">
+                <div class="indicator"></div>
+            </div>
+        </div>
+    </figure>
+    <figure class="dial" id="level">
+        <div class="wrapper">
+            <div class="knob">
+                <div class="indicator"></div>
+            </div>
+        </div>
+    </figure>
+</body>
+<script src='http://apps.bdimg.com/libs/jquery/2.1.4/jquery.js'></script>
+<script type="text/javascript">
+var Dial, dial,
+    __bind = function(fn, me) { return function() { return fn.apply(me, arguments); }; };
+$(function() {
+    //旋钮插件
+    // $('#signal').on('shown.bs.modal', function() {    //模态框中的offset计算方式
+
+    //     dial1.elementPosition = {
+    //         x: $("#level1 .knob").offset().left,
+    //         y: $("#level1 .knob").offset().top
+    //     };
+
+    //     dial.elementPosition = {
+    //         x: $("#level .knob").offset().left,
+    //         y: $("#level .knob").offset().top
+    //     };
+    // })
+
+    dial = new Dial({ tar: "#ranVal", dial: "#level", maxVal: 13 });
+    dial1 = new Dial({ tar: "#val", dial: "#level1", maxVal: 1000 });
+
+})
+Dial = (function() {
+
+    Dial.prototype.raf = null;
+
+    Dial.prototype.mdown = false;
+
+    Dial.prototype.mwheel = 0;
+
+    Dial.prototype.mPos = {
+        x: 0,
+        y: 0
+    };
+
+    Dial.prototype.elementPosition = {
+        x: 0,
+        y: 0
+    };
+
+    Dial.prototype.target = 0;
+
+    Dial.prototype.radius = 70; /*半径*/
+
+    Dial.prototype.maxDiff = 70;
+
+    Dial.prototype.constraint = 360;
+
+    Dial.prototype.currentVal = 0;
+
+    function Dial(param) {
+        var knobOffset;
+        console.log(param)
+        this.param = param;
+        this.steps = param.maxVal
+        this.$context = $(param.dial);
+        this.onMouseMove = __bind(this.onMouseMove, this);
+        this.onMouseUp = __bind(this.onMouseUp, this);
+        this.onMouseDown = __bind(this.onMouseDown, this);
+        this.onMouseWheel = __bind(this.onMouseWheel, this);
+        this.$knob = this.$context.find(".knob");
+        knobOffset = this.$knob.offset();
+        this.elementPosition = {
+            x: knobOffset.left,
+            y: knobOffset.top
+        };
+        this.addEventListeners();
+        this.addEventListeners();
+        return;
+    }
+
+    Dial.prototype.addEventListeners = function() {
+        this.$context.on("mousedown", this.onMouseDown);
+        this.$context.on("mousemove", this.onMouseMove);
+        this.$context.get(0).addEventListener("mousewheel", this.onMouseWheel);
+        this.$context.get(0).addEventListener("DOMMouseScroll", this.onMouseWheel);
+        $("body").on("mouseup", this.onMouseUp);
+    };
+
+    Dial.prototype.setDialPosition = function() {
+        this.$knob.css({
+            transform: "rotate(" + this.target + "deg)"
+        });
+    };
+
+    Dial.prototype.setMousePosition = function(event) {
+        var atan, diff, target;
+        this.mPos = {
+            x: event.pageX - this.elementPosition.x,
+            y: event.pageY - this.elementPosition.y
+        };
+        console.log(this.mPos, this.elementPosition)
+
+        atan = Math.atan2(this.mPos.x - this.radius, this.mPos.y - this.radius); //-PI - PI
+        target = -atan / (Math.PI / 180) + 180;
+        diff = Math.abs(target - this.target);
+        if (diff < this.maxDiff && target < this.constraint) {
+            this.target = Math.ceil(target);
+            console.log(this.target)
+            this.currentVal = this.map(this.target, 0, 360, 0, this.steps);
+            this.setDialPosition();
+            this.updateOutput();
+        }
+    };
+
+    Dial.prototype.setWheelPosition = function(value) {
+        var target;
+        target = this.target + value;
+        if (target >= 0 && target <= this.constraint) {
+            this.target = Math.ceil(target) //当前角度
+            this.value = target / this.constraint * this.steps; //当前值 = 当前角度/360*值域
+            this.setDialPosition();
+            $(this.param.tar).text(Math.round(this.value))
+        }
+    }
+
+    Dial.prototype.updateOutput = function() {
+        $(this.param.tar).text(Math.round(this.currentVal));
+    };
+
+    Dial.prototype.onMouseDown = function(event) {
+        this.mdown = true;
+    };
+
+    Dial.prototype.onMouseUp = function(event) {
+        this.mdown = false;
+    };
+
+    Dial.prototype.onMouseMove = function(event) {
+        if (this.mdown) {
+            this.setMousePosition(event);
+        }
+    };
+
+    Dial.prototype.onMouseWheel = function(event) {
+        event = event || window.event;
+        if (event.wheelDelta > 0 || event.detail < 0) {
+            //向上滚
+            this.mwheel = -1;
+        }
+        if (event.wheelDelta < 0 || event.detail > 0) {
+            //向下滚
+            this.mwheel = 1;
+        }
+        this.setWheelPosition(this.mwheel);
+    };
+
+    Dial.prototype.map = function(value, low1, high1, low2, high2) {
+        return low2 + (high2 - low2) * (value - low1) / (high1 - low1);
+        // 100*this.target/360    = currentVal
+    };
+
+    return Dial;
+
+})()
+</script>
+
+</html>
